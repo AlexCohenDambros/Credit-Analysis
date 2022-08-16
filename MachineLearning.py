@@ -17,10 +17,23 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 simplefilter(action='ignore', category=FutureWarning)
 
 pd.set_option('display.max_rows', None)
-
 random_state = 42
 np.random.seed(42)
 error = False
+
+
+# ================ Funções ================
+
+def autoML(X_train, X_test, y_train, y_test):
+    # train models with AutoML
+    automl = AutoML(mode="Perform")
+    automl.fit(X_train, y_train)
+
+    # compute the accuracy on test data
+    predictions = automl.predict_all(X_test)
+    print(predictions.head())
+    print("Test accuracy:", accuracy_score(
+        y_test, predictions["label"].astype(int)))
 
 
 if not os.path.isfile('train.csv'):
@@ -35,7 +48,6 @@ if not os.path.isfile('infoColumns.csv'):
     error = True
     print("Arquivo de info das colunas não existe!!")
 
-
 if not error:
     train = pd.read_csv("train.csv")
     test = pd.read_csv('test.csv')
@@ -45,15 +57,20 @@ if not error:
                'RELIGIAO'], axis=1, inplace=True)
     test.drop(['HS_CPF', 'ORIENTACAO_SEXUAL',
               'RELIGIAO'], axis=1, inplace=True)
-    
+
+    # drop colunas onde a correlação com o TARGET é menor que 1
+    for index, row in infoColumns.iterrows():
+        if row['correlation'] < 1:
+            train.drop([row['names']], axis=1, inplace=True)
+
     # Transforma os valores -inf para NaN
     train[train < 0] = np.nan
     test[test < 0] = np.nan
 
     # Separa atributos de entrada em X e as classes em y
     train = train.to_numpy()
-    X = train[:, 0:66]
-    y = train[:, 66]
+    X = train[:, 0: (train.shape[1]-1)]
+    y = train[:, (train.shape[1]-1)]
 
     # Normalizando os dados
     scaler = preprocessing.MinMaxScaler().fit(X)
@@ -62,12 +79,4 @@ if not error:
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, train_size=0.7, random_state=random_state, stratify=y)
 
-    # train models with AutoML
-    automl = AutoML(mode="Perform")
-    automl.fit(X_train, y_train)
-
-    # compute the accuracy on test data
-    predictions = automl.predict_all(X_test)
-    print(predictions.head())
-    print("Test accuracy:", accuracy_score(
-        y_test, predictions["label"].astype(int)))
+    autoML(X_train, X_test, y_train, y_test)
