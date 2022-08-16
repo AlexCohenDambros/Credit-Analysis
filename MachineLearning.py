@@ -30,33 +30,38 @@ if not os.path.isfile('train.csv'):
 if not os.path.isfile('test.csv'):
     error = True
     print("Arquivo de Test não existe!!")
-  
+
 if not os.path.isfile('infoColumns.csv'):
     error = True
     print("Arquivo de info das colunas não existe!!")
-  
 
-if not error: 
+
+if not error:
     train = pd.read_csv("train.csv")
     test = pd.read_csv('test.csv')
     infoColumns = pd.read_csv('infoColumns.csv')
+
+    train.drop(['HS_CPF', 'ORIENTACAO_SEXUAL',
+               'RELIGIAO'], axis=1, inplace=True)
+    test.drop(['HS_CPF', 'ORIENTACAO_SEXUAL',
+              'RELIGIAO'], axis=1, inplace=True)
     
-    train.drop(['HS_CPF', 'ORIENTACAO_SEXUAL', 'RELIGIAO'], axis = 1, inplace = True)
-    test.drop(['HS_CPF', 'ORIENTACAO_SEXUAL', 'RELIGIAO'], axis = 1, inplace = True)
-    
+    # Transforma os valores -inf para NaN
+    train[train < 0] = np.nan
+    test[test < 0] = np.nan
+
     # Separa atributos de entrada em X e as classes em y
     train = train.to_numpy()
-    X = train[:,0:66]
-    y = train[:,66]
-    
+    X = train[:, 0:66]
+    y = train[:, 66]
+
     # Normalizando os dados
     scaler = preprocessing.MinMaxScaler().fit(X)
     X = scaler.transform(X)
-    
-    
-    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.7, random_state=random_state)
 
-    
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, train_size=0.7, random_state=random_state, stratify=y)
+
     # train models with AutoML
     automl = AutoML(mode="Perform")
     automl.fit(X_train, y_train)
@@ -64,6 +69,5 @@ if not error:
     # compute the accuracy on test data
     predictions = automl.predict_all(X_test)
     print(predictions.head())
-    print("Test accuracy:", accuracy_score(y_test, predictions["label"].astype(int)))
-    
-  
+    print("Test accuracy:", accuracy_score(
+        y_test, predictions["label"].astype(int)))
