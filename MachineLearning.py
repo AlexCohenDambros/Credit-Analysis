@@ -1,10 +1,13 @@
 import pandas as pd
 import numpy as np
 import os
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # scikit learn utilites
 from sklearn.datasets import load_digits
-from sklearn.metrics import accuracy_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
 
@@ -35,7 +38,6 @@ def autoML(X_train, X_test, y_train, y_test):
     print("Test accuracy:", accuracy_score(
         y_test, predictions["label"].astype(int)))
 
-
 if not os.path.isfile('train.csv'):
     error = True
     print("Arquivo de Treino não existe!!")
@@ -60,9 +62,20 @@ if not error:
 
     # drop colunas onde a correlação com o TARGET é menor que 1
     for index, row in infoColumns.iterrows():
-        if row['correlation'] < 1:
-            train.drop([row['names']], axis=1, inplace=True)
-
+        try:
+            if row['correlation'] < 1:
+                    train.drop([row['names']], axis=1, inplace=True)
+        except: 
+            continue
+        
+    # Removendo colunas com mais de 50% de valores Nulos
+        for index, row in infoColumns.iterrows():
+            try:
+                if row['%null'] > 0.50:
+                        train.drop([row['names']], axis=1, inplace=True)
+            except: 
+                continue
+            
     # Transforma os valores -inf para NaN
     train[train < 0] = np.nan
     test[test < 0] = np.nan
