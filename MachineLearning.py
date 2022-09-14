@@ -10,6 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn import preprocessing
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 # mljar-supervised package
 from supervised.automl import AutoML
@@ -37,6 +38,14 @@ def autoML(X_train, X_test, y_train, y_test):
     print(predictions.head())
     print("Test accuracy:", accuracy_score(
         y_test, predictions["label"].astype(int)))
+    
+def calc_vif(X):
+    vif = pd.DataFrame()
+    vif["variables"] = X.columns
+    vif["VIF"] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
+    vif["Correlation"] = [abs(round(X[i].corr(X["TARGET"])*100,2)) for i in X.columns]
+
+    return vif
 
 if not os.path.isfile('train.csv'):
     error = True
@@ -75,6 +84,16 @@ if not error:
                         train.drop([row['names']], axis=1, inplace=True)
             except: 
                 continue
+            
+            
+    # Loop utilizado para realizar a exclusão de colunas até o maior valor do VIF seja menor de 5
+    while True:
+        dataframe_vif = calc_vif(train).sort_values('VIF', ascending=False)
+        row = dataframe_vif.iloc[0]
+        if row['VIF'] > 5.0:
+            train.drop(row['variables'], axis=1, inplace=True)
+        else: 
+            break
             
     # Transforma os valores -inf para NaN
     train[train < 0] = np.nan
